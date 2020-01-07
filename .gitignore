@@ -1,0 +1,6 @@
+output
+*.pyc
+*.swp
+*.tmp
+data
+embeddings
