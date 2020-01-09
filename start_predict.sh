@@ -18,6 +18,9 @@ export OUTPUT_EMBEDDING_DIR=embeddings
 
 export OUTPUT_CKPT_DIR=output/checkpoints
 
+#export CKPT_NUM=10000,20000,103235
+export CKPT_NUM=103235
+
 python -m baseline.train_and_predict \
         --bert_ckpt_dir $MODEL_DIR \
         --dstc8_data_dir $DATA_DIR \
@@ -28,5 +31,5 @@ python -m baseline.train_and_predict \
         --run_mode predict \
         --task_name dstc8_single_domain \
         --do_lower_case True \
-        --eval_ckpt 10000,20000,103235
+        --eval_ckpt $CKPT_NUM
 

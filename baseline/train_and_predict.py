@@ -544,7 +544,7 @@ class SchemaGuidedDST(object):
                 initializer=tf.truncated_normal_initializer(stddev=0.02))
         batch_size = tf.shape(intent_embeddings)[0]
         repeated_null_intent_embedding = tf.tile(null_intent_embedding,
-                                                                                         [batch_size, 1, 1])
+                                                [batch_size, 1, 1])
         intent_embeddings = tf.concat(
                 [repeated_null_intent_embedding, intent_embeddings], axis=1)
 

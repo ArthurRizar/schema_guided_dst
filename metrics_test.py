@@ -29,7 +29,7 @@ import os
 
 from absl.testing import absltest
 
-from schema_guided_dst import metrics
+import metrics
 
 ACCURACY_METRICS = [
         metrics.AVERAGE_GOAL_ACCURACY,

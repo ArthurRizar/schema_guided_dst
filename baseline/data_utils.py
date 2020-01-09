@@ -24,9 +24,11 @@ import collections
 import json
 import os
 import re
+import sys
 
 import tensorflow as tf
 
+sys.path.append('../')
 import schema
 from baseline.bert import tokenization
 

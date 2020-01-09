@@ -16,7 +16,6 @@ export OUTPUT_DIR=output
 
 #10000,20000,103235
 export CKPT_NUM=103235
-
 export PREDICTION_DIR=$OUTPUT_DIR/checkpoints/pred_res_"$CKPT_NUM"_dev_dstc8_single_domain_dstc8-schema-guided-dialogue
 
 python -m evaluate \
