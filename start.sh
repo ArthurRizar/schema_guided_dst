@@ -18,6 +18,9 @@ export OUTPUT_EMBEDDING_DIR=embeddings
 
 export OUTPUT_CKPT_DIR=output/checkpoints
 
+#export task_name=dstc8_single_domain
+export task_name=dstc8_multi_domain
+
 python -m baseline.train_and_predict \
         --bert_ckpt_dir $MODEL_DIR \
         --dstc8_data_dir $DATA_DIR \

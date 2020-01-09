@@ -76,7 +76,7 @@ flags.DEFINE_float(
         "Proportion of training to perform linear learning rate warmup for. "
         "E.g., 0.1 = 10% of training.")
 
-flags.DEFINE_integer("save_checkpoints_steps", 1000,
+flags.DEFINE_integer("save_checkpoints_steps", 5000,
                                          "How often to save the model checkpoint.")
 
 flags.DEFINE_bool("use_tpu", False, "Whether to use TPU or GPU/CPU.")
