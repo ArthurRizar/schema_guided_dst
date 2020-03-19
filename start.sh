@@ -18,8 +18,8 @@ export OUTPUT_EMBEDDING_DIR=embeddings
 
 export OUTPUT_CKPT_DIR=output/checkpoints
 
-#export task_name=dstc8_single_domain
-export task_name=dstc8_multi_domain
+export task_name=dstc8_single_domain
+#export task_name=dstc8_multi_domain
 
 python -m baseline.train_and_predict \
         --bert_ckpt_dir $MODEL_DIR \
@@ -29,5 +29,5 @@ python -m baseline.train_and_predict \
         --output_dir $OUTPUT_CKPT_DIR \
         --dataset_split train \
         --run_mode train \
-        --task_name dstc8_single_domain \
+        --task_name $TASK_NAME \
         --do_lower_case True
