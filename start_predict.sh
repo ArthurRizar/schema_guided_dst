@@ -21,6 +21,9 @@ export OUTPUT_CKPT_DIR=output/checkpoints
 #export CKPT_NUM=10000,20000,103235
 export CKPT_NUM=103235
 
+export TASK_NAME=dstc8_single_domain
+#export TASK_NAME=dstc8_multi_domain
+
 python -m baseline.train_and_predict \
         --bert_ckpt_dir $MODEL_DIR \
         --dstc8_data_dir $DATA_DIR \
@@ -29,7 +32,7 @@ python -m baseline.train_and_predict \
         --output_dir $OUTPUT_CKPT_DIR \
         --dataset_split dev \
         --run_mode predict \
-        --task_name dstc8_single_domain \
+        --task_name $TASK_NAME \
         --do_lower_case True \
         --eval_ckpt $CKPT_NUM
 
