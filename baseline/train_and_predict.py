@@ -597,7 +597,7 @@ class SchemaGuidedDST(object):
         slot_embeddings = features["noncat_slot_emb"]
         max_num_slots = slot_embeddings.get_shape().as_list()[1]
         status_logits = self._get_logits(slot_embeddings, 3,
-                                                                         "noncategorical_slot_status")
+                                            "noncategorical_slot_status")
 
         # Predict the distribution for span indices.
         token_embeddings = self._encoded_tokens
@@ -619,6 +619,47 @@ class SchemaGuidedDST(object):
         layer_2 = tf.keras.layers.Dense(units=2, name="noncat_spans_layer_2")
         # Shape: (batch_size, max_num_slots, max_num_tokens, 2)
         span_logits = layer_2(layer_1(slot_token_embeddings))
+
+        # Mask out invalid logits for padded tokens.
+        token_mask = features["utt_mask"]    # Shape: (batch_size, max_num_tokens).
+        token_mask = tf.cast(token_mask, tf.bool)
+        tiled_token_mask = tf.tile(
+                tf.expand_dims(tf.expand_dims(token_mask, 1), 3),
+                [1, max_num_slots, 1, 2])
+        negative_logits = -0.7 * tf.ones_like(span_logits) * span_logits.dtype.max
+        span_logits = tf.where(tiled_token_mask, span_logits, negative_logits)
+        # Shape of both tensors: (batch_size, max_num_slots, max_num_tokens).
+        span_start_logits, span_end_logits = tf.unstack(span_logits, axis=3)
+        return status_logits, span_start_logits, span_end_logits
+
+    def _get_noncategorical_slot_goals_2(self, features):
+        """Obtain logits for status and slot spans for non-categorical slots."""
+        # Predict the status of all non-categorical slots.
+        slot_embeddings = features["noncat_slot_emb"]
+        max_num_slots = slot_embeddings.get_shape().as_list()[1]
+        status_logits = self._get_logits(slot_embeddings, 3,
+                                            "noncategorical_slot_status")
+
+        # Predict the distribution for span indices.
+        token_embeddings = self._encoded_tokens
+        max_num_tokens = token_embeddings.get_shape().as_list()[1]
+        tiled_token_embeddings = tf.tile(
+                tf.expand_dims(token_embeddings, 1), [1, max_num_slots, 1, 1])
+        tiled_slot_embeddings = tf.tile(
+                tf.expand_dims(slot_embeddings, 2), [1, 1, max_num_tokens, 1])
+        # Shape: (batch_size, max_num_slots, max_num_tokens, 2 * embedding_dim).
+        slot_token_embeddings = tf.concat(
+                [tiled_slot_embeddings, tiled_token_embeddings], axis=3)
+
+        # Project the combined embeddings to obtain logits.
+        embedding_dim = slot_embeddings.get_shape().as_list()[-1]
+        layer_1 = tf.keras.layers.Dense(   
+                units=embedding_dim,
+                activation=modeling.gelu,
+                name="noncat_spans_layer_1")
+        layer_2 = tf.keras.layers.Dense(units=2, name="noncat_spans_layer_2")
+        # Shape: (batch_size, max_num_slots, max_num_tokens, 2)
+        span_logits = layer_2(layer_1(slot_token_embeddings)) 
 
         # Mask out invalid logits for padded tokens.
         token_mask = features["utt_mask"]    # Shape: (batch_size, max_num_tokens).

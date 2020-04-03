@@ -336,13 +336,13 @@ class SchemaEmbeddingGenerator(object):
             nl_seq = " ".join(
                     [service_des, _NL_SEPARATOR, slot, slot_descriptions[slot]])
             features.append(self._create_feature(nl_seq, "noncat_slot_emb",
-                                                                                     service_schema.service_id, slot_id))
+                                                            service_schema.service_id, slot_id))
 
         for slot_id, slot in enumerate(service_schema.categorical_slots):
             nl_seq = " ".join(
                     [service_des, _NL_SEPARATOR, slot, slot_descriptions[slot]])
             features.append(self._create_feature(nl_seq, "cat_slot_emb",
-                                                                                     service_schema.service_id, slot_id))
+                                                            service_schema.service_id, slot_id))
             for value_id, value in enumerate(
                     service_schema.get_categorical_slot_values(slot)):
                 nl_seq = " ".join([slot, slot_descriptions[slot], _NL_SEPARATOR, value])

@@ -159,10 +159,12 @@ class Dstc8DataProcessor(object):
             # Generate an example for every frame in every user turn.
             if turn["speaker"] == "USER":
                 user_utterance = turn["utterance"]
+                #user_utterance = "User: " + turn["utterance"]
                 user_frames = {f["service"]: f for f in turn["frames"]}
                 if turn_idx > 0:
                     system_turn = dialog["turns"][turn_idx - 1]
                     system_utterance = system_turn["utterance"]
+                    #system_utterance = "System: " + system_turn["utterance"]
                     system_frames = {f["service"]: f for f in system_turn["frames"]}
                 else:
                     system_utterance = ""
@@ -183,9 +185,13 @@ class Dstc8DataProcessor(object):
         return state_update
 
     def _create_examples_from_turn(self, turn_id, system_utterance,
-                                                                 user_utterance, system_frames, user_frames,
-                                                                 prev_states, schemas):
+                            user_utterance, system_frames, user_frames,
+                            prev_states, schemas):
         """Creates an example for each frame in the user turn."""
+        if len(system_utterance) != 0:
+            system_utterance = 'System: ' + system_utterance
+        if len(user_utterance) != 0:
+            user_utterance = 'User: ' + user_utterance
         system_tokens, system_alignments, system_inv_alignments = (
                 self._tokenize(system_utterance))
         user_tokens, user_alignments, user_inv_alignments = (
@@ -206,7 +212,15 @@ class Dstc8DataProcessor(object):
             example.example_id = "{}-{}".format(turn_id, service)
             example.service_schema = schemas.get_service_schema(service)
             system_frame = system_frames.get(service, None)
+            if system_frame is not None and len(system_frame['slots']) != 0:
+                for item in system_frame['slots']:
+                    item['start'] += 8
+                    item['exclusive_end'] += 8
             state = user_frame["state"]["slot_values"]
+            if len(user_frame) != 0:
+                for item in user_frame['slots']:
+                    item['start'] += 6
+                    item['exclusive_end'] += 6
             state_update = self._get_state_update(state, prev_states.get(service, {}))
             states[service] = state
             # Populate features in the example.
@@ -550,6 +564,109 @@ class InputExample(object):
         self.start_char_idx = start_char_idx
         self.end_char_idx = end_char_idx
 
+    def add_utterance_features(self, system_tokens, system_inv_alignments,
+                                                         user_tokens, user_inv_alignments):
+        """Add utterance related features input to bert.
+
+        Note: this method modifies the system tokens and user_tokens in place to
+        make their total length <= the maximum input length for BERT model.
+
+        Args:
+            system_tokens: a list of strings which represents system utterance.
+            system_inv_alignments: a list of tuples which denotes the start and end
+                charater of the tpken that a bert token originates from in the original
+                system utterance.
+            user_tokens: a list of strings which represents user utterance.
+            user_inv_alignments: a list of tuples which denotes the start and end
+                charater of the token that a bert token originates from in the original
+                user utterance.
+        """
+        # Make user-system utterance input (in BERT format)
+        # Input sequence length for utterance BERT encoder
+        max_utt_len = self._max_seq_length
+
+        # Modify lengths of sys & usr utterance so that length of total utt
+        # (including [CLS], [SEP], [SEP]) is no more than max_utt_len
+        
+        #is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
+        is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 2)
+        if is_too_long and self._log_data_warnings:
+            tf.logging.info(
+                    "Utterance sequence truncated in example id - %s.", self.example_id)
+
+        # Construct the tokens, segment mask and valid token mask which will be
+        # input to BERT, using the tokens for system utterance (sequence A) and
+        # user utterance (sequence B)
+        utt_subword = []
+        utt_seg = []
+        utt_mask = []
+        start_char_idx = []
+        end_char_idx = []
+
+        utt_subword.append("[CLS]")
+        utt_seg.append(0)
+        utt_mask.append(1)
+        start_char_idx.append(0)
+        end_char_idx.append(0)
+
+        for subword_idx, subword in enumerate(system_tokens):
+            utt_subword.append(subword)
+            utt_seg.append(0)
+            utt_mask.append(1)
+            st, en = system_inv_alignments[subword_idx]
+            start_char_idx.append(-(st + 1))
+            end_char_idx.append(-(en + 1))
+
+        #utt_subword.append("[SEP]")
+        #utt_seg.append(0)
+        #utt_mask.append(1)
+        #start_char_idx.append(0)
+        #end_char_idx.append(0)
+
+        for subword_idx, subword in enumerate(user_tokens):
+            utt_subword.append(subword)
+            utt_seg.append(1)
+            utt_mask.append(1)
+            st, en = user_inv_alignments[subword_idx]
+            start_char_idx.append(st + 1)
+            end_char_idx.append(en + 1)
+        
+        
+
+
+
+        utt_subword.append("[SEP]")
+        utt_seg.append(1)
+        utt_mask.append(1)
+        start_char_idx.append(0)
+        end_char_idx.append(0)
+        
+        print(system_tokens)
+        print('utt_subword:', utt_subword)
+        print('utt_seg:', utt_seg)
+        print('utt_mask:', utt_mask)
+        print('start_char_idx:', start_char_idx)
+        print('end_char_idx:', end_char_idx)
+        #exit()
+        utterance_ids = self._tokenizer.convert_tokens_to_ids(utt_subword)
+
+        # Zero-pad up to the BERT input sequence length.
+        while len(utterance_ids) < max_utt_len:
+            utterance_ids.append(0)
+            utt_seg.append(0)
+            utt_mask.append(0)
+            start_char_idx.append(0)
+            end_char_idx.append(0)
+        self.utterance_ids = utterance_ids
+        self.utterance_segment = utt_seg
+        self.utterance_mask = utt_mask
+        self.start_char_idx = start_char_idx
+        self.end_char_idx = end_char_idx
+
+
+
+
+
     def make_copy_with_utterance_features(self):
         """Make a copy of the current example with utterance features."""
         new_example = InputExample(
@@ -630,6 +747,8 @@ class InputExample(object):
         for intent_idx, intent in enumerate(all_intents):
             if intent == frame["state"]["active_intent"]:
                 self.intent_status[intent_idx] = STATUS_ACTIVE
+
+        
 
 
 def _create_int_feature(values):
