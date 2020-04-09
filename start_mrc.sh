@@ -15,12 +15,20 @@ export DATA_DIR=/root/zhaomeng/dst_test/dstc8-schema-guided-dialogue
 
 export OUTPUT_DIR=output
 
-#10000,20000,103235, 206470
-export CKPT_NUM=206470
-export PREDICTION_DIR=$OUTPUT_DIR/checkpoints/pred_res_"$CKPT_NUM"_dev_dstc8_single_domain_dstc8-schema-guided-dialogue
+export OUTPUT_EMBEDDING_DIR=embeddings
 
-python -m evaluate \
+export OUTPUT_CKPT_DIR=output/checkpoints
+
+export TASK_NAME=dstc8_single_domain
+#export TASK_NAME=dstc8_multi_domain
+
+python -m baseline.train_and_predict \
+        --bert_ckpt_dir $MODEL_DIR \
         --dstc8_data_dir $DATA_DIR \
-        --prediction_dir $PREDICTION_DIR \
-        --eval_set dev \
-        --output_metric_file $OUTPUT_DIR/output_metric_file
+        --dialogues_example_dir $OUTPUT_DIR \
+        --schema_embedding_dir $OUTPUT_EMBEDDING_DIR \
+        --output_dir $OUTPUT_CKPT_DIR \
+        --dataset_split train \
+        --run_mode train \
+        --task_name $TASK_NAME \
+        --do_lower_case True
