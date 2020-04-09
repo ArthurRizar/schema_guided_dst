@@ -13,7 +13,9 @@ baseline
 }
 --------------------------
 --------------------------
-add "User: System:", origin model structure
+1) add "User: System:", origin model structure
+2) [SEP] splited "System utterance" and "User utterance"
+3) last system utterance and last user utterance
 Dialog metrics: 
 {
 'active_intent_accuracy': 0.9094567404426559,
@@ -29,4 +31,39 @@ Dialog metrics:
 }
 --------------------------
 --------------------------
-
+1) add "User: System:", origin model structure
+2) no [SEP] between in "System utterance" and "User utterance"
+3) last system utterance and last user utterance
+Dialog metrics: 
+{
+'active_intent_accuracy': 0.8869885982562039,
+'requested_slots_f1': 0.9481284532592379, 
+'requested_slots_precision': 0.980617035546613, 
+'requested_slots_recall': 0.9515425888665325, 
+'average_goal_accuracy': 0.3317787502959203, 
+'average_cat_accuracy': 0.6627729707457767, 
+'average_noncat_accuracy': 0.16963530518259065,
+'joint_goal_accuracy': 0.159865857105835, 
+'joint_cat_accuracy': 0.6527444095361301, 
+'joint_noncat_accuracy': 0.18054745504346076
+}
+--------------------------
+--------------------------
+1) add "User: System:", origin model structure
+2) no [SEP] between in "System utterance" and "User utterance"
+3) append each slot description with [SEP]
+4) last system utterance and last user utterance
+5) 128 max_sequence_length 
+Dialog metrics: 
+{
+'active_intent_accuracy': 0.8896713615023474,
+'requested_slots_f1': 0.9491672255756762, 
+'requested_slots_precision': 0.9869215291750503,
+'requested_slots_recall': 0.9509557344064387,
+'average_goal_accuracy': 0.3372376371097141,
+'average_cat_accuracy': 0.688545529460239,
+'average_noncat_accuracy': 0.16555221508724138,
+'joint_goal_accuracy': 0.14207629059168345,
+'joint_cat_accuracy': 0.6444280170024025,
+'joint_noncat_accuracy': 0.17814393467122738
+}
