@@ -188,10 +188,6 @@ class Dstc8DataProcessor(object):
                             user_utterance, system_frames, user_frames,
                             prev_states, schemas):
         """Creates an example for each frame in the user turn."""
-        if len(system_utterance) != 0:
-            system_utterance = 'System: ' + system_utterance
-        if len(user_utterance) != 0:
-            user_utterance = 'User: ' + user_utterance
         system_tokens, system_alignments, system_inv_alignments = (
                 self._tokenize(system_utterance))
         user_tokens, user_alignments, user_inv_alignments = (
@@ -212,15 +208,7 @@ class Dstc8DataProcessor(object):
             example.example_id = "{}-{}".format(turn_id, service)
             example.service_schema = schemas.get_service_schema(service)
             system_frame = system_frames.get(service, None)
-            if system_frame is not None and len(system_frame['slots']) != 0:
-                for item in system_frame['slots']:
-                    item['start'] += 8
-                    item['exclusive_end'] += 8
             state = user_frame["state"]["slot_values"]
-            if len(user_frame) != 0:
-                for item in user_frame['slots']:
-                    item['start'] += 6
-                    item['exclusive_end'] += 6
             state_update = self._get_state_update(state, prev_states.get(service, {}))
             states[service] = state
             # Populate features in the example.
@@ -617,11 +605,11 @@ class InputExample(object):
             start_char_idx.append(-(st + 1))
             end_char_idx.append(-(en + 1))
 
-        #utt_subword.append("[SEP]")
-        #utt_seg.append(0)
-        #utt_mask.append(1)
-        #start_char_idx.append(0)
-        #end_char_idx.append(0)
+        utt_subword.append("[SEP]")
+        utt_seg.append(0)
+        utt_mask.append(1)
+        start_char_idx.append(0)
+        end_char_idx.append(0)
 
         for subword_idx, subword in enumerate(user_tokens):
             utt_subword.append(subword)
@@ -630,9 +618,6 @@ class InputExample(object):
             st, en = user_inv_alignments[subword_idx]
             start_char_idx.append(st + 1)
             end_char_idx.append(en + 1)
-        
-        
-
 
 
         utt_subword.append("[SEP]")
