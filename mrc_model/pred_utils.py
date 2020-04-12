@@ -110,8 +110,6 @@ def get_predicted_dialog(dialog, all_predictions, schemas):
                         elif ch_start_idx > 0 and ch_end_idx > 0:
                             # Add span from the user utterance.
                             slot_values[slot] = (user_utterance[ch_start_idx - 1:ch_end_idx])
-                    print(user_utterance)
-                    exit()
                 # Create a new dict to avoid overwriting the state in previous turns
                 # because of use of same objects.
                 state["slot_values"] = {s: [v] for s, v in slot_values.items()}

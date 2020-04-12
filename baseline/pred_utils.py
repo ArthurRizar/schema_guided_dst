@@ -45,9 +45,6 @@ def get_predicted_dialog(dialog, all_predictions, schemas):
     Returns:
         A json object containing the dialogue with labels predicted by the model.
     """
-    all_intents = sorted(list(set([intent for service_schema in schemas._service_schemas.values() for intent in service_schema.intents])))
-    intent2idx = {intent: idx for idx, intent in enumerate(all_intents)}
-    idx2intent = {idx: intent for idx, intent in enumerate(all_intents)}
 
     # Overwrite the labels in the turn with the predictions from the model. For
     # test set, these labels are missing from the data and hence they are added.
@@ -78,11 +75,6 @@ def get_predicted_dialog(dialog, all_predictions, schemas):
                 state["active_intent"] = (
                         service_schema.get_intent_from_id(active_intent_id - 1)
                         if active_intent_id else "NONE")
-                '''
-                state["active_intent"] = (
-                        idx2intent[active_intent_id]
-                        if active_intent_id else "NONE")
-                '''
 
                 # Add prediction for requested slots.
                 requested_slots = []

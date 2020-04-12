@@ -51,25 +51,26 @@ flags.DEFINE_bool(
         "Whether to lower case the input text. Should be True for uncased "
         "models and False for cased models.")
 
-'''
+
 flags.DEFINE_integer(
         "max_seq_length", 80,
         "The maximum total input sequence length after WordPiece tokenization. "
         "Sequences longer than this will be truncated, and sequences shorter "
         "than this will be padded.")
+
 '''
 flags.DEFINE_integer(
         "max_seq_length", 128,
         "The maximum total input sequence length after WordPiece tokenization. "
         "Sequences longer than this will be truncated, and sequences shorter "
         "than this will be padded.")
-
+'''
 
 flags.DEFINE_float("dropout_rate", 0.1,
                                      "Dropout rate for BERT representations.")
 
 # Hyperparameters and optimization related flags.
-flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
+flags.DEFINE_integer("train_batch_size", 32, "Total batch size for training.")
 
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
@@ -653,11 +654,14 @@ class SchemaGuidedDST(object):
         max_num_tokens = token_embeddings.get_shape().as_list()[1]
         tiled_token_embeddings = tf.tile(
                 tf.expand_dims(token_embeddings, 1), [1, max_num_slots, 1, 1])
-        tiled_slot_embeddings = tf.tile(
-                tf.expand_dims(slot_embeddings, 2), [1, 1, max_num_tokens, 1])
+
+        #tiled_slot_embeddings = tf.tile(
+        #        tf.expand_dims(slot_embeddings, 2), [1, 1, max_num_tokens, 1])
         # Shape: (batch_size, max_num_slots, max_num_tokens, 2 * embedding_dim).
         slot_token_embeddings = tf.concat(
                 [tiled_slot_embeddings, tiled_token_embeddings], axis=3)
+
+        slot_tokens_embeddings = tiled_token_embeddings
 
         # Project the combined embeddings to obtain logits.
         embedding_dim = slot_embeddings.get_shape().as_list()[-1]

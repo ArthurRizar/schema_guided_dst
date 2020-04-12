@@ -13,40 +13,42 @@ baseline
 }
 --------------------------
 --------------------------
+1) no [SEP]
+2) both segment_ids is [0,0,0,....]
+Dialog metrics:
+{'active_intent_accuracy': 0.8836351441985245,
+'requested_slots_f1': 0.9486482386381783, 
+'requested_slots_precision': 0.9860663983903419,
+'requested_slots_recall': 0.9505365526492288, 
+'average_goal_accuracy': 0.7389923564896406,
+'average_cat_accuracy': 0.6899464359291305,
+'average_noncat_accuracy': 0.7480045080106376, 
+'joint_goal_accuracy': 0.4287723474178403,
+'joint_cat_accuracy': 0.658843097394197,
+'joint_noncat_accuracy': 0.5196537057344064}
+--------------------------
+--------------------------
+1) both segment_ids is [0,0,0,....]
+Dialog metrics:'
+{'active_intent_accuracy': 0.9052649228705567,
+'requested_slots_f1': 0.9500718597298075, 
+'requested_slots_precision': 0.9829672479320367,
+'requested_slots_recall': 0.9532193158953722, 
+'average_goal_accuracy': 0.7446078442977264,
+'average_cat_accuracy': 0.6862793572311495,
+'average_noncat_accuracy': 0.7586862554323149, 
+'joint_goal_accuracy': 0.4266525482897384, 
+'joint_cat_accuracy': 0.6405470338199963, 
+'joint_noncat_accuracy': 0.532983585177733}
+--------------------------
+--------------------------
 1) add "User: System:", origin model structure
-2) [SEP] splited "System utterance" and "User utterance"
-3) last system utterance and last user utterance
-Dialog metrics: 
-{
-'active_intent_accuracy': 0.9094567404426559,
-'requested_slots_f1': 0.9495532720130306, 
-'requested_slots_precision': 0.9828722334004025,
-'requested_slots_recall': 0.9525486250838363, 
-'average_goal_accuracy': 0.4474882442942193,
-'average_cat_accuracy': 0.6671817058096415,
-'average_noncat_accuracy': 0.3402729454498281,
-'joint_goal_accuracy': 0.19177948446358148, 
-'joint_cat_accuracy': 0.6398077989281095, 
-'joint_noncat_accuracy': 0.24415873534553992
-}
+
 --------------------------
 --------------------------
 1) add "User: System:", origin model structure
 2) no [SEP] between in "System utterance" and "User utterance"
-3) last system utterance and last user utterance
-Dialog metrics: 
-{
-'active_intent_accuracy': 0.8869885982562039,
-'requested_slots_f1': 0.9481284532592379, 
-'requested_slots_precision': 0.980617035546613, 
-'requested_slots_recall': 0.9515425888665325, 
-'average_goal_accuracy': 0.3317787502959203, 
-'average_cat_accuracy': 0.6627729707457767, 
-'average_noncat_accuracy': 0.16963530518259065,
-'joint_goal_accuracy': 0.159865857105835, 
-'joint_cat_accuracy': 0.6527444095361301, 
-'joint_noncat_accuracy': 0.18054745504346076
-}
+
 --------------------------
 --------------------------
 1) add "User: System:", origin model structure
@@ -54,16 +56,5 @@ Dialog metrics:
 3) append each slot description with [SEP]
 4) last system utterance and last user utterance
 5) 128 max_sequence_length 
-Dialog metrics: 
-{
-'active_intent_accuracy': 0.8896713615023474,
-'requested_slots_f1': 0.9491672255756762, 
-'requested_slots_precision': 0.9869215291750503,
-'requested_slots_recall': 0.9509557344064387,
-'average_goal_accuracy': 0.3372376371097141,
-'average_cat_accuracy': 0.688545529460239,
-'average_noncat_accuracy': 0.16555221508724138,
-'joint_goal_accuracy': 0.14207629059168345,
-'joint_cat_accuracy': 0.6444280170024025,
-'joint_noncat_accuracy': 0.17814393467122738
-}
+
+

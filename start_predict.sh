@@ -20,7 +20,7 @@ export OUTPUT_EMBEDDING_DIR=embeddings
 export OUTPUT_CKPT_DIR=output/checkpoints
 
 #export CKPT_NUM=10000,20000,103235, 206470
-export CKPT_NUM=206470
+export CKPT_NUM=103235
 
 export TASK_NAME=dstc8_single_domain
 #export TASK_NAME=dstc8_multi_domain

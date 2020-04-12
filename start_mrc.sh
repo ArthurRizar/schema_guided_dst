@@ -22,7 +22,7 @@ export OUTPUT_CKPT_DIR=output/checkpoints
 export TASK_NAME=dstc8_single_domain
 #export TASK_NAME=dstc8_multi_domain
 
-python -m baseline.train_and_predict \
+python -m mrc_model.train_and_predict \
         --bert_ckpt_dir $MODEL_DIR \
         --dstc8_data_dir $DATA_DIR \
         --dialogues_example_dir $OUTPUT_DIR \

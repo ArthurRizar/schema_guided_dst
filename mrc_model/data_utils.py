@@ -46,8 +46,8 @@ MAX_NUM_VALUE_PER_CAT_SLOT = 11
 MAX_NUM_INTENT = 4
 STR_DONTCARE = "dontcare"
 # The maximum total input sequence length after WordPiece tokenization.
-#DEFAULT_MAX_SEQ_LENGTH = 128
-DEFAULT_MAX_SEQ_LENGTH = 512
+DEFAULT_MAX_SEQ_LENGTH = 128
+#DEFAULT_MAX_SEQ_LENGTH = 512
 
 
 # These are used to represent the status of slots (off, active, dontcare) and
@@ -211,8 +211,8 @@ class Dstc8DataProcessor(object):
             example.service_schema = schemas.get_service_schema(service)
 
             slot_descriptions = [
-                        s['description'] for s in example.service_schema.schema_json['slots']
-                    ]
+                             s['description'] for s in example.service_schema.schema_json['slots']
+                        ]
 
             slot_descript_tokens, slot_descript_alignments, slot_descript_inv_alignments = self._tokenize(' '.join(slot_descriptions))
             
@@ -244,7 +244,7 @@ class Dstc8DataProcessor(object):
             # [SEP].
             user_span_boundaries = self._find_subword_indices(
                     state_update, user_utterance, user_frame["slots"], user_alignments,
-                    user_tokens, 2 + len(system_tokens))
+                    user_tokens, 1 + len(system_tokens))
             if system_frame is not None:
                 system_span_boundaries = self._find_subword_indices(
                         state_update, system_utterance, system_frame["slots"],
@@ -491,7 +491,9 @@ class InputExample(object):
         return summary_dict
 
     def add_utterance_features(self, system_tokens, system_inv_alignments,
-                                                         user_tokens, user_inv_alignments):
+                                                         user_tokens, user_inv_alignments, 
+                                                         slot_descript_tokens, slot_descript_inv_alignments,
+                                                         user_utterance, system_utterance):
         """Add utterance related features input to bert.
 
         Note: this method modifies the system tokens and user_tokens in place to
@@ -513,7 +515,10 @@ class InputExample(object):
 
         # Modify lengths of sys & usr utterance so that length of total utt
         # (including [CLS], [SEP], [SEP]) is no more than max_utt_len
+        
         is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
+        #is_too_long = truncate_seq_triple(system_tokens, user_tokens, slot_descript_tokens, max_utt_len - 3)
+
         if is_too_long and self._log_data_warnings:
             tf.logging.info(
                     "Utterance sequence truncated in example id - %s.", self.example_id)
@@ -540,7 +545,7 @@ class InputExample(object):
             st, en = system_inv_alignments[subword_idx]
             start_char_idx.append(-(st + 1))
             end_char_idx.append(-(en + 1))
-
+      
         utt_subword.append("[SEP]")
         utt_seg.append(0)
         utt_mask.append(1)
@@ -554,107 +559,14 @@ class InputExample(object):
             st, en = user_inv_alignments[subword_idx]
             start_char_idx.append(st + 1)
             end_char_idx.append(en + 1)
-            user_utterance = ' '.join(user_tokens)
-
+        
         utt_subword.append("[SEP]")
         utt_seg.append(1)
         utt_mask.append(1)
         start_char_idx.append(0)
         end_char_idx.append(0)
-
-        utterance_ids = self._tokenizer.convert_tokens_to_ids(utt_subword)
-
-        # Zero-pad up to the BERT input sequence length.
-        while len(utterance_ids) < max_utt_len:
-            utterance_ids.append(0)
-            utt_seg.append(0)
-            utt_mask.append(0)
-            start_char_idx.append(0)
-            end_char_idx.append(0)
-        self.utterance_ids = utterance_ids
-        self.utterance_segment = utt_seg
-        self.utterance_mask = utt_mask
-        self.start_char_idx = start_char_idx
-        self.end_char_idx = end_char_idx
-
-    def add_utterance_features(self, system_tokens, system_inv_alignments,
-                                                         user_tokens, user_inv_alignments, 
-                                                         slot_descript_tokens, slot_descript_inv_alignments,
-                                                         user_utterance, system_utterance):
-        """Add utterance related features input to bert.
-
-        Note: this method modifies the system tokens and user_tokens in place to
-        make their total length <= the maximum input length for BERT model.
-
-        Args:
-            system_tokens: a list of strings which represents system utterance.
-            system_inv_alignments: a list of tuples which denotes the start and end
-                charater of the tpken that a bert token originates from in the original
-                system utterance.
-            user_tokens: a list of strings which represents user utterance.
-            user_inv_alignments: a list of tuples which denotes the start and end
-                charater of the token that a bert token originates from in the original
-                user utterance.
-        """
-        # Make user-system utterance input (in BERT format)
-        # Input sequence length for utterance BERT encoder
-        max_utt_len = self._max_seq_length
-
-        # Modify lengths of sys & usr utterance so that length of total utt
-        # (including [CLS], [SEP], [SEP]) is no more than max_utt_len
         
-        #is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
-        is_too_long = truncate_seq_triple(system_tokens, user_tokens, slot_descript_tokens, max_utt_len - 3)
-
-        if is_too_long and self._log_data_warnings:
-            tf.logging.info(
-                    "Utterance sequence truncated in example id - %s.", self.example_id)
-
-        # Construct the tokens, segment mask and valid token mask which will be
-        # input to BERT, using the tokens for system utterance (sequence A) and
-        # user utterance (sequence B)
-        utt_subword = []
-        utt_seg = []
-        utt_mask = []
-        start_char_idx = []
-        end_char_idx = []
-
-        utt_subword.append("[CLS]")
-        utt_seg.append(0)
-        utt_mask.append(1)
-        start_char_idx.append(0)
-        end_char_idx.append(0)
-
-        for subword_idx, subword in enumerate(system_tokens):
-            utt_subword.append(subword)
-            utt_seg.append(0)
-            utt_mask.append(1)
-            st, en = system_inv_alignments[subword_idx]
-            start_char_idx.append(-(st + 1))
-            end_char_idx.append(-(en + 1))
-
-
-        for subword_idx, subword in enumerate(user_tokens):
-            utt_subword.append(subword)
-            utt_seg.append(0)
-            utt_mask.append(1)
-            st, en = user_inv_alignments[subword_idx]
-            #if st != 0 or en != 0:
-            #    print(st, en)
-            #    print(user_utterance)
-            #    print(' '.join(user_tokens))
-            #    print(subword)
-            #    print(user_utterance[st: en + 1])
-            start_char_idx.append(st + 1)
-            end_char_idx.append(en + 1)
-        
-        #exit()
-        utt_subword.append("[SEP]")
-        utt_seg.append(0)
-        utt_mask.append(1)
-        start_char_idx.append(0)
-        end_char_idx.append(0)
-        
+        '''
         for subword_idx, subword in enumerate(slot_descript_tokens):
             utt_subword.append(subword)
             utt_seg.append(1)
@@ -670,7 +582,7 @@ class InputExample(object):
         utt_mask.append(1)
         start_char_idx.append(0)
         end_char_idx.append(0)
-
+        '''
 
         utterance_ids = self._tokenizer.convert_tokens_to_ids(utt_subword)
 
