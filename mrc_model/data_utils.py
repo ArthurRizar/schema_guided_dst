@@ -220,19 +220,22 @@ class Dstc8DataProcessor(object):
                                         user_tokens, user_inv_alignments,
                                         slot_descript_tokens, slot_descript_inv_alignments, user_utterance, system_utterance) 
             
-            #example.add_utterance_features(system_tokens, system_inv_alignments,
-            #                            user_tokens, user_inv_alignments)
-
             system_frame = system_frames.get(service, None)
             if system_frame is not None and len(system_frame['slots']) != 0:
                 for item in system_frame['slots']:
                     item['start'] += 8
                     item['exclusive_end'] += 8
             state = user_frame["state"]["slot_values"]
-            if len(user_frame) != 0:
+            if len(user_frame['slots']) != 0:
+                #print(user_frame['slots'])
                 for item in user_frame['slots']:
                     item['start'] += 6
                     item['exclusive_end'] += 6
+
+                #print(user_frame['slots'])
+                #print(state)
+                #print(user_utterance)
+                #print(user_utterance.find(state['city'][0]))
             state_update = self._get_state_update(state, prev_states.get(service, {}))
             states[service] = state
             # Populate features in the example.
@@ -245,6 +248,8 @@ class Dstc8DataProcessor(object):
             user_span_boundaries = self._find_subword_indices(
                     state_update, user_utterance, user_frame["slots"], user_alignments,
                     user_tokens, 1 + len(system_tokens))
+
+
             if system_frame is not None:
                 system_span_boundaries = self._find_subword_indices(
                         state_update, system_utterance, system_frame["slots"],
@@ -273,6 +278,8 @@ class Dstc8DataProcessor(object):
                     if 0 <= start_tok_idx < len(subwords):
                         end_tok_idx = min(end_tok_idx, len(subwords) - 1)
                         value_char_spans[value] = (start_tok_idx + bias, end_tok_idx + bias)
+                        #print(utterance, value_char_spans[value], value, start_tok_idx, end_tok_idx)
+                        #exit()
             for v in values:
                 if v in value_char_spans:
                     span_boundaries[slot] = value_char_spans[v]
@@ -516,8 +523,8 @@ class InputExample(object):
         # Modify lengths of sys & usr utterance so that length of total utt
         # (including [CLS], [SEP], [SEP]) is no more than max_utt_len
         
-        is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
-        #is_too_long = truncate_seq_triple(system_tokens, user_tokens, slot_descript_tokens, max_utt_len - 3)
+        #is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
+        is_too_long = truncate_seq_triple(system_tokens, user_tokens, slot_descript_tokens, max_utt_len - 3)
 
         if is_too_long and self._log_data_warnings:
             tf.logging.info(
@@ -546,27 +553,26 @@ class InputExample(object):
             start_char_idx.append(-(st + 1))
             end_char_idx.append(-(en + 1))
       
-        utt_subword.append("[SEP]")
-        utt_seg.append(0)
-        utt_mask.append(1)
-        start_char_idx.append(0)
-        end_char_idx.append(0)
+        #utt_subword.append("[SEP]")
+        #utt_seg.append(0)
+        #utt_mask.append(1)
+        #start_char_idx.append(0)
+        #end_char_idx.append(0)
 
         for subword_idx, subword in enumerate(user_tokens):
             utt_subword.append(subword)
-            utt_seg.append(1)
+            utt_seg.append(0)
             utt_mask.append(1)
             st, en = user_inv_alignments[subword_idx]
             start_char_idx.append(st + 1)
             end_char_idx.append(en + 1)
         
         utt_subword.append("[SEP]")
-        utt_seg.append(1)
+        utt_seg.append(0)
         utt_mask.append(1)
         start_char_idx.append(0)
         end_char_idx.append(0)
         
-        '''
         for subword_idx, subword in enumerate(slot_descript_tokens):
             utt_subword.append(subword)
             utt_seg.append(1)
@@ -582,7 +588,6 @@ class InputExample(object):
         utt_mask.append(1)
         start_char_idx.append(0)
         end_char_idx.append(0)
-        '''
 
         utterance_ids = self._tokenizer.convert_tokens_to_ids(utt_subword)
 

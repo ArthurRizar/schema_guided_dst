@@ -53,9 +53,9 @@ def get_predicted_dialog(dialog, all_predictions, schemas):
     all_slot_values = collections.defaultdict(dict)
     for turn_idx, turn in enumerate(dialog["turns"]):
         if turn["speaker"] == "USER":
-            user_utterance = turn["utterance"]
+            user_utterance = "User: " + turn["utterance"]
             system_utterance = (
-                    dialog["turns"][turn_idx - 1]["utterance"] if turn_idx else "")
+                    "System: " + dialog["turns"][turn_idx - 1]["utterance"] if turn_idx else "")
             turn_id = "{:02d}".format(turn_idx)
             for frame in turn["frames"]:
                 predictions = all_predictions[(dialog_id, turn_id, frame["service"])]
