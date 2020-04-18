@@ -94,3 +94,18 @@ Dialog metrics: {'active_intent_accuracy': 0.9421529175050302, 'requested_slots_
 5) append slot description
 6) 128 max_sequence_length
 7) delete fixed slot embedding
+{'active_intent_accuracy': 0.9133132126089872, 'requested_slots_f1': 0.9515992782089362, 'requested_slots_precision': 0.985940643863179, 'requested_slots_recall': 0.9548960429242119, 'average_goal_accuracy': 0.7343765574172958, 'average_cat_accuracy': 0.6553564070869385, 'average_noncat_accuracy': 0.7626925471881689, 'joint_goal_accuracy': 0.4247170717639168, 'joint_cat_accuracy': 0.6475697652929219, 'joint_noncat_accuracy': 0.5176700405767941}
+
+
+--------------------------
+--------------------------
+1) add "User: System:", origin model structure
+2) no [SEP] between in "System utterance" and "User utterance"
+3) both user utterance and system utterance segment_ids is [0,0,0,0....]
+4) bias = 1 (only [CLS])
+5) append slot description
+6) 128 max_sequence_length
+7) delete fixed slot embedding
+8) feed whole dialog
+
+
