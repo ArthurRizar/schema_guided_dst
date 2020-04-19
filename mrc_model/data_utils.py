@@ -883,7 +883,7 @@ def truncate_seq_with_prev_utt_tokens(tokens_a, tokens_b, tokens_c, tokens_d, ma
         if total_length <= max_length:
             break
         is_too_long = True
-        if prev_dialog_len + system_len + user_len > 2 * len(tokens_c):
+        if prev_dialog_len + system_len + user_len > 2 * slot_len:
             if prev_dialog_len + system_len > user_len:
                 if prev_dialog_len > system_len:
                     tokens_a.pop()
