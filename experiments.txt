@@ -109,3 +109,13 @@ Dialog metrics: {'active_intent_accuracy': 0.9421529175050302, 'requested_slots_
 8) feed whole dialog
 
 
+--------------------------
+--------------------------
+1) add "User: System:", origin model structure
+2) no [SEP] between in "System utterance" and "User utterance"
+3) both user utterance and system utterance segment_ids is [0,0,0,0....]
+4) bias = 1 (only [CLS])
+5) append slot description
+6) 256 max_sequence_length
+7) delete fixed slot embedding
+8) feed whole dialog

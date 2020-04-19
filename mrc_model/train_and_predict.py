@@ -62,7 +62,7 @@ flags.DEFINE_integer(
 '''
 
 flags.DEFINE_integer(
-        "max_seq_length", 128,
+        "max_seq_length", 256,
         "The maximum total input sequence length after WordPiece tokenization. "
         "Sequences longer than this will be truncated, and sequences shorter "
         "than this will be padded.")
@@ -71,7 +71,7 @@ flags.DEFINE_float("dropout_rate", 0.1,
                                      "Dropout rate for BERT representations.")
 
 # Hyperparameters and optimization related flags.
-flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
+flags.DEFINE_integer("train_batch_size", 8, "Total batch size for training.")
 
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
