@@ -113,7 +113,8 @@ def model_fn_builder(bert_config, init_checkpoint, use_tpu,
                 input_ids=input_ids,
                 input_mask=input_mask,
                 token_type_ids=input_type_ids,
-                use_one_hot_embeddings=use_one_hot_embeddings)
+                use_one_hot_embeddings=use_one_hot_embeddings,
+                scope='bert')
 
         if mode != tf.estimator.ModeKeys.PREDICT:
             raise ValueError("Only PREDICT modes are supported: %s" % (mode))
