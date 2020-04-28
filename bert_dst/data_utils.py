@@ -26,11 +26,13 @@ import os
 import re
 import sys
 
+import numpy as np
 import tensorflow as tf
 
 sys.path.append('../')
 import schema
-from mrc_model.bert import tokenization
+from bert_dst.bert import tokenization
+from bert_dst import extract_schema_embedding
 
 
 # Dimension of the embedding for intents, slots and categorical slot values in
@@ -47,8 +49,6 @@ MAX_NUM_INTENT = 4
 STR_DONTCARE = "dontcare"
 # The maximum total input sequence length after WordPiece tokenization.
 DEFAULT_MAX_SEQ_LENGTH = 128
-#DEFAULT_MAX_SEQ_LENGTH = 512
-
 
 # These are used to represent the status of slots (off, active, dontcare) and
 # intents (off, active) in dialogue state tracking.
@@ -157,23 +157,22 @@ class Dstc8DataProcessor(object):
         dialog_id = dialog["dialogue_id"]
         prev_states = {}
         examples = []
-        prev_dialog_utt_tokens = []
         for turn_idx, turn in enumerate(dialog["turns"]):
             # Generate an example for every frame in every user turn.
             if turn["speaker"] == "USER":
-                user_utterance = "User: "+ turn["utterance"]
+                user_utterance = turn["utterance"]
                 user_frames = {f["service"]: f for f in turn["frames"]}
                 if turn_idx > 0:
                     system_turn = dialog["turns"][turn_idx - 1]
-                    system_utterance = "System: " + system_turn["utterance"]
+                    system_utterance = system_turn["utterance"]
                     system_frames = {f["service"]: f for f in system_turn["frames"]}
                 else:
                     system_utterance = ""
                     system_frames = {}
                 turn_id = "{}-{}-{:02d}".format(dataset, dialog_id, turn_idx)
-                turn_examples, prev_states, prev_dialog_utt_tokens = self._create_examples_from_turn(
+                turn_examples, prev_states = self._create_examples_from_turn(
                         turn_id, system_utterance, user_utterance, system_frames,
-                        user_frames, prev_states, schemas, prev_dialog_utt_tokens)
+                        user_frames, prev_states, schemas)
                 examples.extend(turn_examples)
         return examples
 
@@ -185,56 +184,62 @@ class Dstc8DataProcessor(object):
                 state_update.pop(slot)
         return state_update
 
-    def _get_dialog_utts_update(self, system_tokens, user_tokens, prev_dialog_utt_tokens):
-        dialog_utt_tokens = prev_dialog_utt_tokens + system_tokens + user_tokens
-        return dialog_utt_tokens
-
     def _create_examples_from_turn(self, turn_id, system_utterance,
-                            user_utterance, system_frames, user_frames,
-                            prev_states, schemas, prev_dialog_utt_tokens):
+                                                                 user_utterance, system_frames, user_frames,
+                                                                 prev_states, schemas):
         """Creates an example for each frame in the user turn."""
         system_tokens, system_alignments, system_inv_alignments = (
                 self._tokenize(system_utterance))
         user_tokens, user_alignments, user_inv_alignments = (
                 self._tokenize(user_utterance))
-        
-        dialog_utt_tokens = self._get_dialog_utts_update(system_tokens, user_tokens, prev_dialog_utt_tokens)
-
         states = {}
-
-        base_example = None
+        base_example = InputExample(
+                max_seq_length=self._max_seq_length,
+                is_real_example=True,
+                tokenizer=self._tokenizer,
+                log_data_warnings=self._log_data_warnings)
+        base_example.example_id = turn_id
+        base_example.add_utterance_features(system_tokens, system_inv_alignments,
+                                                                                user_tokens, user_inv_alignments)
         examples = []
         for service, user_frame in user_frames.items():
             # Create an example for this service.
-            example = InputExample(
-                            max_seq_length=self._max_seq_length,
-                            is_real_example=True,
-                            tokenizer=self._tokenizer,
-                            log_data_warnings=self._log_data_warnings)
+            example = base_example.make_copy_with_utterance_features()
             example.example_id = "{}-{}".format(turn_id, service)
             example.service_schema = schemas.get_service_schema(service)
 
-            slot_descriptions = [
-                             s['description'] for s in example.service_schema.schema_json['slots']
-                        ]
+            slot_descriptions = {
+                    s["name"]: s["description"] for s in example.service_schema.schema_json["slots"]
+                    }
 
-            slot_descript_tokens, slot_descript_alignments, slot_descript_inv_alignments = self._tokenize(' '.join(slot_descriptions))
-            
-            example.add_utterance_features(system_tokens, system_inv_alignments,
-                                        user_tokens, user_inv_alignments,
-                                        slot_descript_tokens, slot_descript_inv_alignments, user_utterance, system_utterance, prev_dialog_utt_tokens)
-            
+
+            #print(slot_descriptions)
+            service_des = example.service_schema.description
+            noncat_slot_contexts = [' '.join([service_des, extract_schema_embedding._NL_SEPARATOR, slot, slot_descriptions[slot]]) 
+                    for slot in example.service_schema.non_categorical_slots]
+            #print(noncat_slot_contexts)
+            #print(len(noncat_slot_contexts))
+            example.noncat_slot_context_ids = np.zeros([MAX_NUM_NONCAT_SLOT, self._max_seq_length])
+            example.noncat_slot_context_mask = np.zeros([MAX_NUM_NONCAT_SLOT, self._max_seq_length])
+            example.noncat_slot_context_type_ids = np.zeros([MAX_NUM_NONCAT_SLOT, self._max_seq_length])
+            for idx, context in enumerate(noncat_slot_contexts):
+                example.add_slot_context_features(context, idx)
+            #print(np.shape(example.noncat_slot_context_ids))
+            #print(example.noncat_slot_context_ids)
+            #print(np.shape(example.noncat_slot_context_mask))
+            #print(example.noncat_slot_context_mask)
+            #print(np.shape(example.noncat_slot_context_type_ids))
+            #print(example.noncat_slot_context_type_ids)
+            #print(len(noncat_slot_contexts))
+            example.noncat_slot_context_ids_flat = np.reshape(example.noncat_slot_context_ids, [MAX_NUM_NONCAT_SLOT * self._max_seq_length]).astype(np.int64)
+            example.noncat_slot_context_mask_flat = np.reshape(example.noncat_slot_context_mask, [MAX_NUM_NONCAT_SLOT * self._max_seq_length]).astype(np.int64)
+            example.noncat_slot_context_type_ids_flat = np.reshape(example.noncat_slot_context_type_ids, [MAX_NUM_NONCAT_SLOT * self._max_seq_length]).astype(np.int64)
+            #print(type(example.noncat_slot_context_ids_flat))
+            #print(np.shape(example.noncat_slot_context_ids_flat))
+            #print(example.noncat_slot_context_ids_flat)
+
             system_frame = system_frames.get(service, None)
-            if system_frame is not None and len(system_frame['slots']) != 0:
-                for item in system_frame['slots']:
-                    item['start'] += 8
-                    item['exclusive_end'] += 8
             state = user_frame["state"]["slot_values"]
-            if len(user_frame['slots']) != 0:
-                for item in user_frame['slots']:
-                    item['start'] += 6
-                    item['exclusive_end'] += 6
-
             state_update = self._get_state_update(state, prev_states.get(service, {}))
             states[service] = state
             # Populate features in the example.
@@ -246,9 +251,7 @@ class Dstc8DataProcessor(object):
             # [SEP].
             user_span_boundaries = self._find_subword_indices(
                     state_update, user_utterance, user_frame["slots"], user_alignments,
-                    user_tokens, 1 + len(system_tokens) + len(prev_dialog_utt_tokens))
-
-
+                    user_tokens, 2 + len(system_tokens))
             if system_frame is not None:
                 system_span_boundaries = self._find_subword_indices(
                         state_update, system_utterance, system_frame["slots"],
@@ -260,7 +263,7 @@ class Dstc8DataProcessor(object):
             example.add_requested_slots(user_frame)
             example.add_intents(user_frame)
             examples.append(example)
-        return examples, states, dialog_utt_tokens
+        return examples, states
 
     def _find_subword_indices(self, slot_values, utterance, char_slot_spans,
                                                         alignments, subwords, bias):
@@ -277,8 +280,6 @@ class Dstc8DataProcessor(object):
                     if 0 <= start_tok_idx < len(subwords):
                         end_tok_idx = min(end_tok_idx, len(subwords) - 1)
                         value_char_spans[value] = (start_tok_idx + bias, end_tok_idx + bias)
-                        #print(utterance, value_char_spans[value], value, start_tok_idx, end_tok_idx)
-                        #exit()
             for v in values:
                 if v in value_char_spans:
                     span_boundaries[slot] = value_char_spans[v]
@@ -496,10 +497,75 @@ class InputExample(object):
         }
         return summary_dict
 
+    def add_slot_context_features(self, input_line, idx=0):
+        """Create a single InputFeatures instance."""
+        seq_length = self._max_seq_length
+        line = tokenization.convert_to_unicode(input_line)
+        line = line.strip()
+        text_a = None
+        text_b = None
+        m = re.match(r"^(.*) \|\|\| (.*)$", line)
+        if m is None:
+            text_a = line
+        else:
+            text_a = m.group(1)
+            text_b = m.group(2)
+
+        tokens_a = self._tokenizer.tokenize(text_a)
+        tokens_b = None
+        if text_b:
+            tokens_b = self._tokenizer.tokenize(text_b)
+
+        if tokens_b:
+            # Modifies `tokens_a` and `tokens_b` in place so that the total
+            # length is less than the specified length.
+            # Account for [CLS], [SEP], [SEP] with "- 3"
+            truncate_seq_pair(tokens_a, tokens_b, seq_length - 3)
+        else:
+            # Account for [CLS] and [SEP] with "- 2"
+            if len(tokens_a) > seq_length - 2:
+                tokens_a = tokens_a[0:(seq_length - 2)]
+
+        tokens = []
+        input_type_ids = []
+        tokens.append("[CLS]")
+        input_type_ids.append(0)
+        for token in tokens_a:
+            tokens.append(token)
+            input_type_ids.append(0)
+        tokens.append("[SEP]")
+        input_type_ids.append(0)
+
+        if tokens_b:
+            for token in tokens_b:
+                tokens.append(token)
+                input_type_ids.append(1)
+            tokens.append("[SEP]")
+            input_type_ids.append(1)
+
+        input_ids = self._tokenizer.convert_tokens_to_ids(tokens)
+
+        # The mask has 1 for real tokens and 0 for padding tokens. Only real
+        # tokens are attended to.
+        input_mask = [1] * len(input_ids)
+
+        # Zero-pad up to the sequence length.
+        while len(input_ids) < seq_length:
+            input_ids.append(0)
+            input_mask.append(0)
+            input_type_ids.append(0)
+        assert len(input_ids) == seq_length
+        assert len(input_mask) == seq_length
+        assert len(input_type_ids) == seq_length
+        self.noncat_slot_context_ids[idx] = input_ids
+        self.noncat_slot_context_mask[idx] = input_mask
+        self.noncat_slot_context_type_ids[idx] = input_type_ids
+        
+
+
+
     def add_utterance_features(self, system_tokens, system_inv_alignments,
-                                                         user_tokens, user_inv_alignments, 
-                                                         slot_descript_tokens, slot_descript_inv_alignments,
-                                                         user_utterance, system_utterance, prev_dialog_utt_tokens):
+                                                         user_tokens, user_inv_alignments):
         """Add utterance related features input to bert.
 
         Note: this method modifies the system tokens and user_tokens in place to
@@ -521,12 +587,7 @@ class InputExample(object):
 
         # Modify lengths of sys & usr utterance so that length of total utt
         # (including [CLS], [SEP], [SEP]) is no more than max_utt_len
-        
-        #is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
-        #is_too_long = truncate_seq_triple(system_tokens, user_tokens, slot_descript_tokens, max_utt_len - 3)
-        
-        is_too_long = truncate_seq_with_prev_utt_tokens(prev_dialog_utt_tokens,system_tokens, user_tokens, slot_descript_tokens, max_utt_len - 3)
-
+        is_too_long = truncate_seq_pair(system_tokens, user_tokens, max_utt_len - 3)
         if is_too_long and self._log_data_warnings:
             tf.logging.info(
                     "Utterance sequence truncated in example id - %s.", self.example_id)
@@ -546,14 +607,6 @@ class InputExample(object):
         start_char_idx.append(0)
         end_char_idx.append(0)
 
-        for subword_idx, subword in enumerate(prev_dialog_utt_tokens):
-            utt_subword.append(subword)
-            utt_seg.append(0)
-            utt_mask.append(1)
-            start_char_idx.append(0)
-            end_char_idx.append(0)
-
-
         for subword_idx, subword in enumerate(system_tokens):
             utt_subword.append(subword)
             utt_seg.append(0)
@@ -561,38 +614,22 @@ class InputExample(object):
             st, en = system_inv_alignments[subword_idx]
             start_char_idx.append(-(st + 1))
             end_char_idx.append(-(en + 1))
-      
-        #utt_subword.append("[SEP]")
-        #utt_seg.append(0)
-        #utt_mask.append(1)
-        #start_char_idx.append(0)
-        #end_char_idx.append(0)
 
-        for subword_idx, subword in enumerate(user_tokens):
-            utt_subword.append(subword)
-            utt_seg.append(0)
-            utt_mask.append(1)
-            st, en = user_inv_alignments[subword_idx]
-            start_char_idx.append(st + 1)
-            end_char_idx.append(en + 1)
-        
         utt_subword.append("[SEP]")
         utt_seg.append(0)
         utt_mask.append(1)
         start_char_idx.append(0)
         end_char_idx.append(0)
-        
-        for subword_idx, subword in enumerate(slot_descript_tokens):
+
+        for subword_idx, subword in enumerate(user_tokens):
             utt_subword.append(subword)
             utt_seg.append(1)
             utt_mask.append(1)
-            st, en = slot_descript_inv_alignments[subword_idx]
-            #start_char_idx.append(st + 1)
-            start_char_idx.append(0)
-            #end_char_idx.append(en + 1)
-            end_char_idx.append(0)
+            st, en = user_inv_alignments[subword_idx]
+            start_char_idx.append(st + 1)
+            end_char_idx.append(en + 1)
 
-        utt_subword.append('[SEP]')
+        utt_subword.append("[SEP]")
         utt_seg.append(1)
         utt_mask.append(1)
         start_char_idx.append(0)
@@ -607,28 +644,11 @@ class InputExample(object):
             utt_mask.append(0)
             start_char_idx.append(0)
             end_char_idx.append(0)
-
-        #print(system_tokens)
-        #print('utt_subword:', utt_subword)
-        #print('utt_seg:', utt_seg, len(utt_mask))
-        #print('utt_mask:', utt_mask, len(utt_mask))
-        #print('start_char_idx:', start_char_idx)
-        #print('end_char_idx:', end_char_idx)
-        #print('max_seq_length:', max_utt_len)
-
-        assert len(utterance_ids) == max_utt_len, (utterance_ids, len(utterance_ids), max_utt_len, len(system_tokens), len(user_tokens), len(slot_descript_tokens))
-        assert len(utt_seg) == max_utt_len
-        assert len(utt_mask) == max_utt_len
-        assert len(start_char_idx) == max_utt_len
-        assert len(end_char_idx) == max_utt_len
-
-
         self.utterance_ids = utterance_ids
         self.utterance_segment = utt_seg
         self.utterance_mask = utt_mask
         self.start_char_idx = start_char_idx
         self.end_char_idx = end_char_idx
-
 
     def make_copy_with_utterance_features(self):
         """Make a copy of the current example with utterance features."""
@@ -711,8 +731,6 @@ class InputExample(object):
             if intent == frame["state"]["active_intent"]:
                 self.intent_status[intent_idx] = STATUS_ACTIVE
 
-        
-
 
 def _create_int_feature(values):
     f = tf.train.Feature(int64_list=tf.train.Int64List(value=list(values)))
@@ -771,6 +789,10 @@ def file_based_convert_examples_to_features(dial_examples, output_file):
 
         features["intent_num"] = _create_int_feature([ex.num_intents])
         features["intent_status"] = _create_int_feature(ex.intent_status)
+        
+        features["noncat_slot_context_ids_flat"] = _create_int_feature(ex.noncat_slot_context_ids_flat)
+        features["noncat_slot_context_mask_flat"] = _create_int_feature(ex.noncat_slot_context_mask_flat)
+        features["noncat_slot_context_type_ids_flat"] = _create_int_feature(ex.noncat_slot_context_type_ids_flat)
 
         tf_example = tf.train.Example(features=tf.train.Features(feature=features))
 
@@ -854,68 +876,4 @@ def truncate_seq_pair(tokens_a, tokens_b, max_length):
             tokens_a.pop()
         else:
             tokens_b.pop()
-    return is_too_long
-
-def truncate_seq_triple(tokens_a, tokens_b, tokens_c, max_length):
-    is_too_long = False
-    while True:
-        total_length = len(tokens_a) + len(tokens_b) + len(tokens_c)
-        #print(total_length, max_length, total_length <= max_length)
-        if total_length <= max_length:
-            break
-        is_too_long = True
-        if len(tokens_a) > len(tokens_b) and len(tokens_a) > len(tokens_c):
-            tokens_a.pop()
-        elif len(tokens_b) > len(tokens_a) and len(tokens_b) > len(tokens_c):
-            tokens_b.pop()
-        else:
-            tokens_c.pop()
-    return is_too_long
-
-def truncate_seq_with_prev_utt_tokens(tokens_a, tokens_b, tokens_c, tokens_d, max_length):
-    is_too_long = False
-    while True:
-        total_length = len(tokens_a) + len(tokens_b) + len(tokens_c) + len(tokens_d)
-        prev_dialog_len = len(tokens_a)
-        system_len = len(tokens_b)
-        user_len = len(tokens_c)
-        slot_len = len(tokens_d)
-        if total_length <= max_length:
-            break
-        is_too_long = True
-        if prev_dialog_len + system_len + user_len > 2 * slot_len:
-            if prev_dialog_len + system_len > user_len:
-                if prev_dialog_len > system_len:
-                    tokens_a.pop()
-                else:
-                    tokens_b.pop()
-            else:
-                tokens_c.pop()
-        else:
-            tokens_d.pop()
-            
-    return is_too_long
-
-def truncate_seq_with_prev_utt_tokens1(tokens_a, tokens_b, tokens_c, tokends_d, max_length):
-    is_too_long = False
-    while True:
-        total_length = len(tokens_a) + len(tokens_b) + len(tokens_c) + len(tokens_d)
-        prev_dialog_len = len(tokens_a)
-        system_len = len(tokens_b)
-        user_len = len(tokens_c)
-        slot_len = len(tokens_d) 
-        if total_length <= max_length:
-            break
-        is_too_long = True
-        if prev_dialog_len + system_len + user_len > slot_len:
-            if prev_dialog_len > 0:
-                if prev_dialog_len > system_len:
-                    tokens_a.pop()                                            
-                else:
-                    tokens_b.pop()
-            else:                                                         
-                tokens_c.pop()
-        else:
-            tokens_d.pop()
-            
     return is_too_long

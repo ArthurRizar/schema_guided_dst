@@ -15,19 +15,19 @@ export MODEL_DIR=/root/zhaomeng/google-BERT/uncased_L-12_H-768_A-12
 export DATA_DIR=/root/zhaomeng/dst_test/dstc8-schema-guided-dialogue
 #export DATA_DIR=../dstc8-schema-guided-dialogue
 
-export OUTPUT_DIR=output
+export OUTPUT_DIR=output_bert
 
 export OUTPUT_EMBEDDING_DIR=embeddings
 
-export OUTPUT_CKPT_DIR=output/checkpoints
+export OUTPUT_CKPT_DIR=output_bert/checkpoints
 
-#export CKPT_NUM=10000,20000,103235, 206470,412940
-export CKPT_NUM=361322
+#export CKPT_NUM=10000,20000,103235, 206470
+export CKPT_NUM=50000
 
 export TASK_NAME=dstc8_single_domain
 #export TASK_NAME=dstc8_multi_domain
 
-python -m mrc_model.train_and_predict \
+python -m baseline.train_and_predict \
         --bert_ckpt_dir $MODEL_DIR \
         --dstc8_data_dir $DATA_DIR \
         --dialogues_example_dir $OUTPUT_DIR \

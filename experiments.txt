@@ -64,7 +64,17 @@ Dialog metrics:
 1) add "User: System:", origin model structure
 2) both user utterance and system utterance segment_ids is [0,0,0,0....]
 3) bias = 2 ([CLS] and [SEP])
-Dialog metrics: {'active_intent_accuracy': 0.9220321931589537, 'requested_slots_f1': 0.9530492478681614, 'requested_slots_precision': 0.9848284149340487, 'requested_slots_recall': 0.954979879275654, 'average_goal_accuracy': 0.7485003551042955, 'average_cat_accuracy': 0.6761845900288422, 'average_noncat_accuracy': 0.773307582538756, 'joint_goal_accuracy': 0.4211514419852448, 'joint_cat_accuracy': 0.6298281278876363, 'joint_noncat_accuracy': 0.5430542323943662}
+Dialog metrics: 
+{'active_intent_accuracy': 0.9220321931589537, 
+'requested_slots_f1': 0.9530492478681614, 
+'requested_slots_precision': 0.9848284149340487,
+'requested_slots_recall': 0.954979879275654,
+'average_goal_accuracy': 0.7485003551042955,
+'average_cat_accuracy': 0.6761845900288422,
+'average_noncat_accuracy': 0.773307582538756,
+'joint_goal_accuracy': 0.4211514419852448,
+'joint_cat_accuracy': 0.6298281278876363, 
+'joint_noncat_accuracy': 0.5430542323943662}
 
 --------------------------
 --------------------------
@@ -72,7 +82,17 @@ Dialog metrics: {'active_intent_accuracy': 0.9220321931589537, 'requested_slots_
 2) no [SEP] between in "System utterance" and "User utterance" 
 3) both user utterance and system utterance segment_ids is [0,0,0,0....]
 4) bias = 1 (only [CLS])
-{'active_intent_accuracy': 0.9114688128772636, 'requested_slots_f1': 0.9486713934400051, 'requested_slots_precision': 0.9791331321260898, 'requested_slots_recall': 0.9527162977867203, 'average_goal_accuracy': 0.7510443288528816, 'average_cat_accuracy': 0.6705191594561186, 'average_noncat_accuracy': 0.7741652721022249, 'joint_goal_accuracy': 0.4189944728370222, 'joint_cat_accuracy': 0.6486786176307522, 'joint_noncat_accuracy': 0.5282653036552649}
+Dialog metrics:
+{'active_intent_accuracy': 0.9114688128772636,
+'requested_slots_f1': 0.9486713934400051, 
+'requested_slots_precision': 0.9791331321260898,
+'requested_slots_recall': 0.9527162977867203, 
+'average_goal_accuracy': 0.7510443288528816, 
+'average_cat_accuracy': 0.6705191594561186,
+'average_noncat_accuracy': 0.7741652721022249,
+'joint_goal_accuracy': 0.4189944728370222, 
+'joint_cat_accuracy': 0.6486786176307522,
+'joint_noncat_accuracy': 0.5282653036552649}
 
 --------------------------
 --------------------------
@@ -82,7 +102,17 @@ Dialog metrics: {'active_intent_accuracy': 0.9220321931589537, 'requested_slots_
 4) bias = 1 (only [CLS])
 5) append slot description
 6) 128 max_sequence_length 
-Dialog metrics: {'active_intent_accuracy': 0.9421529175050302, 'requested_slots_f1': 0.9487033310976973, 'requested_slots_precision': 0.9815671808629557, 'requested_slots_recall': 0.9520456069751845, 'average_goal_accuracy': 0.7417016795117973, 'average_cat_accuracy': 0.6785331685208076, 'average_noncat_accuracy': 0.7629749951352404, 'joint_goal_accuracy': 0.4222483065057009, 'joint_cat_accuracy': 0.6523747920901867, 'joint_noncat_accuracy': 0.5367059926224012}
+Dialog metrics:
+{'active_intent_accuracy': 0.9421529175050302,
+'requested_slots_f1': 0.9487033310976973,
+'requested_slots_precision': 0.9815671808629557,
+'requested_slots_recall': 0.9520456069751845,
+'average_goal_accuracy': 0.7417016795117973,
+'average_cat_accuracy': 0.6785331685208076,
+'average_noncat_accuracy': 0.7629749951352404, 
+'joint_goal_accuracy': 0.4222483065057009, 
+'joint_cat_accuracy': 0.6523747920901867, 
+'joint_noncat_accuracy': 0.5367059926224012}
 
 
 --------------------------
@@ -94,7 +124,17 @@ Dialog metrics: {'active_intent_accuracy': 0.9421529175050302, 'requested_slots_
 5) append slot description
 6) 128 max_sequence_length
 7) delete fixed slot embedding
-{'active_intent_accuracy': 0.9133132126089872, 'requested_slots_f1': 0.9515992782089362, 'requested_slots_precision': 0.985940643863179, 'requested_slots_recall': 0.9548960429242119, 'average_goal_accuracy': 0.7343765574172958, 'average_cat_accuracy': 0.6553564070869385, 'average_noncat_accuracy': 0.7626925471881689, 'joint_goal_accuracy': 0.4247170717639168, 'joint_cat_accuracy': 0.6475697652929219, 'joint_noncat_accuracy': 0.5176700405767941}
+Dialog metrics:
+{'active_intent_accuracy': 0.9133132126089872,
+'requested_slots_f1': 0.9515992782089362,
+'requested_slots_precision': 0.985940643863179, 
+'requested_slots_recall': 0.9548960429242119,
+'average_goal_accuracy': 0.7343765574172958,
+'average_cat_accuracy': 0.6553564070869385,
+'average_noncat_accuracy': 0.7626925471881689,
+'joint_goal_accuracy': 0.4247170717639168,
+'joint_cat_accuracy': 0.6475697652929219,
+'joint_noncat_accuracy': 0.5176700405767941}
 
 
 --------------------------
@@ -105,8 +145,62 @@ Dialog metrics: {'active_intent_accuracy': 0.9421529175050302, 'requested_slots_
 4) bias = 1 (only [CLS])
 5) append slot description
 6) 128 max_sequence_length
-7) delete fixed slot embedding
+7) feed whole dialog
+Dialog metrics:
+{'active_intent_accuracy': 0.9518779342723005,
+'requested_slots_f1': 0.9492774104947144,
+'requested_slots_precision': 0.9819332662642521,
+'requested_slots_recall': 0.954225352112676,
+'average_goal_accuracy': 0.6964964248450255,
+'average_cat_accuracy': 0.672641120725175,
+'average_noncat_accuracy': 0.6966748718946617,
+'joint_goal_accuracy': 0.33068783534540575,
+'joint_cat_accuracy': 0.6510811310293846,
+'joint_noncat_accuracy': 0.43012909959758555}
+
+--------------------------
+--------------------------
+1) add "User: System:", origin model structure
+2) no [SEP] between in "System utterance" and "User utterance"
+3) both user utterance and system utterance segment_ids is [0,0,0,0....]
+4) bias = 1 (only [CLS])
+5) append slot description
+6) 128 max_sequence_length
+7) delete fixed slot embedding to noncat slot
 8) feed whole dialog
+Dialog metrics: 
+{'active_intent_accuracy': 0.9481891348088531,
+'requested_slots_f1': 0.9548409504646929,
+'requested_slots_precision': 0.9869187346300022,
+'requested_slots_recall': 0.9569081153588196,
+'average_goal_accuracy': 0.6258043331492051,
+'average_cat_accuracy': 0.6776060980634527, 
+'average_noncat_accuracy': 0.5975275021080625,
+'joint_goal_accuracy': 0.2869447865191147, 
+'joint_cat_accuracy': 0.6462761042321198, 
+'joint_noncat_accuracy': 0.3710264891750504}
+
+--------------------------
+--------------------------
+1) add "User: System:", origin model structure
+2) no [SEP] between in "System utterance" and "User utterance"
+3) both user utterance and system utterance segment_ids is [0,0,0,0....]
+4) bias = 1 (only [CLS])
+5) append slot description
+6) 256 max_sequence_length
+7) delete fixed slot embedding to noncat slot
+8) feed whole dialog
+Dialog metrics: 
+{'active_intent_accuracy': 0.9086183769282361, 
+'requested_slots_f1': 0.9498379163872123,
+'requested_slots_precision': 0.9873966018332216, 
+'requested_slots_recall': 0.9512072434607646,
+'average_goal_accuracy': 0.6110880943612945, 
+'average_cat_accuracy': 0.6753193242686444, 
+'average_noncat_accuracy': 0.5800590257507946,
+'joint_goal_accuracy': 0.286418387156271,
+'joint_cat_accuracy': 0.6362964331916466,
+'joint_noncat_accuracy': 0.37319208065057013}
 
 
 --------------------------
@@ -117,5 +211,9 @@ Dialog metrics: {'active_intent_accuracy': 0.9421529175050302, 'requested_slots_
 4) bias = 1 (only [CLS])
 5) append slot description
 6) 256 max_sequence_length
-7) delete fixed slot embedding
+7) delete fixed slot embedding to noncat slot
 8) feed whole dialog
+9) span_end depend on span_start
+10) epochs = 70
+
+Dialog metrics: {'active_intent_accuracy': 0.5630449362843729, 'requested_slots_f1': 0.869382964453387, 'requested_slots_precision': 1.0, 'requested_slots_recall': 0.869382964453387, 'average_goal_accuracy': 0.0, 'average_cat_accuracy': 0.0, 'average_noncat_accuracy': 0.0, 'joint_goal_accuracy': 0.08936955063715626, 'joint_cat_accuracy': 0.25244871557937537, 'joint_noncat_accuracy': 0.13832997987927564}

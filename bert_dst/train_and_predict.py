@@ -29,14 +29,16 @@ import os
 
 import numpy as np
 import tensorflow as tf
+import tensorflow.contrib.eager as tfe
+
 
 import schema
-from mrc_model import data_utils
-from mrc_model import extract_schema_embedding
-from mrc_model import pred_utils
-from mrc_model.bert import modeling
-from mrc_model.bert import optimization
-from mrc_model.bert import tokenization
+from bert_dst import data_utils
+from bert_dst import extract_schema_embedding
+from bert_dst import pred_utils
+from bert_dst.bert import modeling
+from bert_dst.bert import optimization
+from bert_dst.bert import tokenization
 
 
 flags = tf.flags
@@ -51,18 +53,8 @@ flags.DEFINE_bool(
         "Whether to lower case the input text. Should be True for uncased "
         "models and False for cased models.")
 
-
-'''
 flags.DEFINE_integer(
         "max_seq_length", 80,
-        "The maximum total input sequence length after WordPiece tokenization. "
-        "Sequences longer than this will be truncated, and sequences shorter "
-        "than this will be padded.")
-
-'''
-
-flags.DEFINE_integer(
-        "max_seq_length", 256,
         "The maximum total input sequence length after WordPiece tokenization. "
         "Sequences longer than this will be truncated, and sequences shorter "
         "than this will be padded.")
@@ -71,7 +63,7 @@ flags.DEFINE_float("dropout_rate", 0.1,
                                      "Dropout rate for BERT representations.")
 
 # Hyperparameters and optimization related flags.
-flags.DEFINE_integer("train_batch_size", 8, "Total batch size for training.")
+flags.DEFINE_integer("train_batch_size", 16, "Total batch size for training.")
 
 flags.DEFINE_integer("eval_batch_size", 8, "Total batch size for eval.")
 
@@ -79,7 +71,7 @@ flags.DEFINE_integer("predict_batch_size", 8, "Total batch size for predict.")
 
 flags.DEFINE_float("learning_rate", 1e-4, "The initial learning rate for Adam.")
 
-flags.DEFINE_float("num_train_epochs", 70.0,
+flags.DEFINE_float("num_train_epochs", 80.0,
                                      "Total number of training epochs to perform.")
 flags.DEFINE_float(
         "warmup_proportion", 0.1,
@@ -219,6 +211,12 @@ def _file_based_input_fn_builder(input_dial_file, schema_embedding_file,
                     tf.FixedLenFeature([], tf.int64),
             "intent_status":
                     tf.FixedLenFeature([max_num_intent], tf.int64),
+            "noncat_slot_context_ids_flat":
+                    tf.FixedLenFeature([max_num_noncat_slot * max_utt_len], tf.int64),
+            "noncat_slot_context_mask_flat":
+                    tf.FixedLenFeature([max_num_noncat_slot * max_utt_len], tf.int64),
+            "noncat_slot_context_type_ids_flat":
+                    tf.FixedLenFeature([max_num_noncat_slot * max_utt_len], tf.int64),
     }
     with tf.gfile.GFile(schema_embedding_file, "rb") as f:
         schema_data = np.load(f, allow_pickle=True)
@@ -305,6 +303,9 @@ class SchemaGuidedDST(object):
         # Encode the utterances using BERT.
         self._encoded_utterance, self._encoded_tokens = (
                 self._encode_utterances(features, is_training))
+
+        self._encoded_noncat_slot_contexts = self._encode_noncat_slot_contexts(features, is_training)
+
         outputs = {}
         outputs["logit_intent_status"] = self._get_intents(features)
         outputs["logit_req_slot_status"] = self._get_requested_slots(features)
@@ -487,6 +488,64 @@ class SchemaGuidedDST(object):
 
         return predictions
 
+    def _encode_noncat_slot_contexts(self, features, is_training):
+        max_seq_length = features['utt'].get_shape().as_list()[-1]
+
+        '''
+        noncat_slot_context_ids = tf.reshape(features['noncat_slot_context_ids_flat'], [-1, max_seq_length])
+        noncat_slot_context_mask = tf.reshape(features['noncat_slot_context_mask_flat'], [-1, max_seq_length])
+        noncat_slot_context_type_ids = tf.reshape(features['noncat_slot_context_type_ids_flat'], [-1, max_seq_length])
+        print(noncat_slot_context_ids)
+        bert_encoder = modeling.BertModel(
+                config=self._bert_config,
+                is_training=is_training,
+                input_ids=noncat_slot_context_ids,
+                input_mask=noncat_slot_context_mask,
+                token_type_ids=noncat_slot_context_type_ids,
+                use_one_hot_embeddings=self._use_one_hot_embeddings,
+                scope='bert')
+        encoded_slot_context = bert_encoder.get_pooled_output()
+        tf.stop_gradient(encoded_slot_context)
+        '''
+
+        noncat_slot_context_ids = tf.reshape(features['noncat_slot_context_ids_flat'], [-1, data_utils.MAX_NUM_NONCAT_SLOT, max_seq_length])
+        noncat_slot_context_mask = tf.reshape(features['noncat_slot_context_mask_flat'], [-1, data_utils.MAX_NUM_NONCAT_SLOT, max_seq_length])
+        noncat_slot_context_type_ids = tf.reshape(features['noncat_slot_context_type_ids_flat'], [-1, data_utils.MAX_NUM_NONCAT_SLOT, max_seq_length])
+        
+        batch_size = noncat_slot_context_ids.get_shape()[0]
+        noncat_slot_context_ids = tf.split(noncat_slot_context_ids, batch_size, axis=0)
+        noncat_slot_context_mask = tf.split(noncat_slot_context_mask, batch_size, axis=0)
+        noncat_slot_context_type_ids = tf.split(noncat_slot_context_type_ids, batch_size, axis=0)
+
+
+        encoded_slot_contexts = []
+        for input_ids, input_mask, token_type_ids in zip(noncat_slot_context_ids, noncat_slot_context_mask, noncat_slot_context_type_ids):
+            input_ids = tf.reshape(input_ids, [-1, max_seq_length])
+            input_mask = tf.reshape(input_mask, [-1, max_seq_length])
+            token_type_ids = tf.reshape(input_mask, [-1, max_seq_length])
+            bert_encoder = modeling.BertModel(
+                    config=self._bert_config,
+                    is_training=is_training,
+                    input_ids=input_ids,
+                    input_mask=input_mask,
+                    token_type_ids=token_type_ids,
+                    use_one_hot_embeddings=self._use_one_hot_embeddings,
+                    scope='bert')
+            cur_encoded_slot_context = bert_encoder.get_pooled_output()
+            cur_encoded_slot_context = tf.stop_gradient(cur_encoded_slot_context)
+            encoded_slot_contexts.append(tf.expand_dims(cur_encoded_slot_context, axis=0))
+            
+
+        encoded_slot_contexts = tf.concat(encoded_slot_contexts, axis=0)
+
+        hidden_dim = encoded_slot_contexts.get_shape()[-1]
+        encoded_slot_contexts = tf.reshape(encoded_slot_contexts, [-1, data_utils.MAX_NUM_NONCAT_SLOT, hidden_dim])
+        mask = tf.sequence_mask(features["noncat_slot_num"], maxlen=data_utils.MAX_NUM_NONCAT_SLOT)
+        encoded_slot_contexts = encoded_slot_contexts * tf.expand_dims(tf.cast(mask, dtype=tf.float32), -1)
+        print(encoded_slot_contexts)
+        return encoded_slot_contexts
+
+
     def _encode_utterances(self, features, is_training):
         """Encode system and user utterances using BERT."""
         # Optain the embedded representation of system and user utterances in the
@@ -497,7 +556,8 @@ class SchemaGuidedDST(object):
                 input_ids=features["utt"],
                 input_mask=features["utt_mask"],
                 token_type_ids=features["utt_seg"],
-                use_one_hot_embeddings=self._use_one_hot_embeddings)
+                use_one_hot_embeddings=self._use_one_hot_embeddings, 
+                scope='bert')
         encoded_utterance = bert_encoder.get_pooled_output()
         encoded_tokens = bert_encoder.get_sequence_output()
 
@@ -601,82 +661,49 @@ class SchemaGuidedDST(object):
         value_logits = tf.where(mask, value_logits, negative_logits)
         return status_logits, value_logits
 
-    def gather_indexes(self, sequence_tensor, positions):
-        """Gathers the vectors at the specific positions over a minibatch."""
-        sequence_shape = modeling.get_shape_list(sequence_tensor, expected_rank=3)
-        batch_size = sequence_shape[0]
-        seq_length = sequence_shape[1]
-        width = sequence_shape[2]
-
-        flat_offsets = tf.reshape(
-                    tf.range(0, batch_size, dtype=tf.int32) * seq_length, [-1, 1])
-        flat_positions = tf.reshape(positions + flat_offsets, [-1])
-        flat_sequence_tensor = tf.reshape(sequence_tensor,
-                                    [-1, width])
-        output_tensor = tf.gather(flat_sequence_tensor, flat_positions)
-        
-        print(sequence_tensor, positions)
-        max_token_num = modeling.get_shape_list(positions, expected_rank=2)[1]
-
-        output_tensor = tf.reshape(output_tensor, [-1, max_token_num, width])
-
-        return output_tensor 
-
     def _get_noncategorical_slot_goals(self, features):
         """Obtain logits for status and slot spans for non-categorical slots."""
         # Predict the status of all non-categorical slots.
-        slot_embeddings = features["noncat_slot_emb"]
+        #slot_embeddings = features["noncat_slot_emb"]
+        slot_embeddings = self._encoded_noncat_slot_contexts
+        print('slot_embeddings:', slot_embeddings)
+        #exit()
         max_num_slots = slot_embeddings.get_shape().as_list()[1]
         status_logits = self._get_logits(slot_embeddings, 3,
                                             "noncategorical_slot_status")
 
         # Predict the distribution for span indices.
         token_embeddings = self._encoded_tokens
-        #print(token_embeddings)
         max_num_tokens = token_embeddings.get_shape().as_list()[1]
         tiled_token_embeddings = tf.tile(
                 tf.expand_dims(token_embeddings, 1), [1, max_num_slots, 1, 1])
+        tiled_slot_embeddings = tf.tile(
+                tf.expand_dims(slot_embeddings, 2), [1, 1, max_num_tokens, 1])
+        # Shape: (batch_size, max_num_slots, max_num_tokens, 2 * embedding_dim).
+        slot_token_embeddings = tf.concat(
+                [tiled_slot_embeddings, tiled_token_embeddings], axis=3)
 
-        slot_token_embeddings = tiled_token_embeddings
-
-        _, embedding_dim, max_seq_length, _ = slot_token_embeddings.get_shape().as_list()
-
-        # start logits
-        span_start_logits = tf.layers.dense(slot_token_embeddings, units=1, name='noncat_span_start_layer')
-        span_start_logits = tf.squeeze(span_start_logits, axis=-1)
-        #print(span_start_logits)
-
-        # start token representation
-        span_start_index_predicts = tf.argmax(tf.nn.softmax(span_start_logits, -1), -1)
-        span_start_index_predicts = tf.cast(span_start_index_predicts, dtype=tf.int32)
-        span_start_representation = self.gather_indexes(token_embeddings, span_start_index_predicts)
-
-        # end logits
-        tiled_span_start_representation = tf.tile(tf.expand_dims(span_start_representation, 2), [1, 1, max_seq_length, 1])
-        #print(tiled_span_start_representation)
-        token_embeddings_for_span_end = tf.concat([slot_token_embeddings, tiled_span_start_representation], 3)
-        #print(token_embeddings_for_span_end)
-        span_end_logits = tf.layers.dense(token_embeddings_for_span_end, units=1, name='noncat_span_end_layer')
-        span_end_logits = tf.squeeze(span_end_logits, axis=-1)
-        #print(span_end_logits)
-
+        # Project the combined embeddings to obtain logits.
+        embedding_dim = slot_embeddings.get_shape().as_list()[-1]
+        layer_1 = tf.keras.layers.Dense(
+                units=embedding_dim,
+                activation=modeling.gelu,
+                name="noncat_spans_layer_1")
+        layer_2 = tf.keras.layers.Dense(units=2, name="noncat_spans_layer_2")
+        # Shape: (batch_size, max_num_slots, max_num_tokens, 2)
+        span_logits = layer_2(layer_1(slot_token_embeddings))
 
         # Mask out invalid logits for padded tokens.
-        token_mask = features['utt_mask']
+        token_mask = features["utt_mask"]    # Shape: (batch_size, max_num_tokens).
         token_mask = tf.cast(token_mask, tf.bool)
         tiled_token_mask = tf.tile(
-                        tf.expand_dims(token_mask, 1),
-                        [1, max_num_slots, 1])
-        negative_logits = -0.7 * tf.ones_like(span_start_logits) * span_start_logits.dtype.max
-        span_start_logits = tf.where(tiled_token_mask, span_start_logits, negative_logits, name='noncat_span_start_logits')
-        span_end_logits = tf.where(tiled_token_mask, span_end_logits, negative_logits, name='noncat_span_end_logits')
-        print(status_logits)
-        print(span_start_logits)
-        print(span_end_logits)
-        #exit()
-
+                tf.expand_dims(tf.expand_dims(token_mask, 1), 3),
+                [1, max_num_slots, 1, 2])
+        negative_logits = -0.7 * tf.ones_like(span_logits) * span_logits.dtype.max
+        span_logits = tf.where(tiled_token_mask, span_logits, negative_logits)
+        # Shape of both tensors: (batch_size, max_num_slots, max_num_tokens).
+        span_start_logits, span_end_logits = tf.unstack(span_logits, axis=3)
         return status_logits, span_start_logits, span_end_logits
-
 
 # Modified from run_classifier.model_fn_builder
 def _model_fn_builder(bert_config, init_checkpoint, learning_rate,
@@ -696,6 +723,9 @@ def _model_fn_builder(bert_config, init_checkpoint, learning_rate,
             total_loss = tf.constant(0.0)
 
         tvars = tf.trainable_variables()
+        #print(tvars)
+        #print(len(tvars))
+        #exit()
         scaffold_fn = None
         if init_checkpoint:
             assignment_map, _ = modeling.get_assignment_map_from_checkpoint(

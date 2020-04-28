@@ -15,27 +15,14 @@ export MODEL_DIR=/root/zhaomeng/google-BERT/uncased_L-12_H-768_A-12
 export DATA_DIR=/root/zhaomeng/dst_test/dstc8-schema-guided-dialogue
 #export DATA_DIR=../dstc8-schema-guided-dialogue
 
-export OUTPUT_DIR=output
+export OUTPUT_DIR=output_bert
 
-export OUTPUT_EMBEDDING_DIR=embeddings
+#10000,20000,103235, 206470
+export CKPT_NUM=50000
+export PREDICTION_DIR=$OUTPUT_DIR/checkpoints/pred_res_"$CKPT_NUM"_dev_dstc8_single_domain_dstc8-schema-guided-dialogue
 
-export OUTPUT_CKPT_DIR=output/checkpoints
-
-#export CKPT_NUM=10000,20000,103235, 206470,412940
-export CKPT_NUM=361322
-
-export TASK_NAME=dstc8_single_domain
-#export TASK_NAME=dstc8_multi_domain
-
-python -m mrc_model.train_and_predict \
-        --bert_ckpt_dir $MODEL_DIR \
+python -m evaluate \
         --dstc8_data_dir $DATA_DIR \
-        --dialogues_example_dir $OUTPUT_DIR \
-        --schema_embedding_dir $OUTPUT_EMBEDDING_DIR \
-        --output_dir $OUTPUT_CKPT_DIR \
-        --dataset_split dev \
-        --run_mode predict \
-        --task_name $TASK_NAME \
-        --do_lower_case True \
-        --eval_ckpt $CKPT_NUM
-
+        --prediction_dir $PREDICTION_DIR \
+        --eval_set dev \
+        --output_metric_file $OUTPUT_DIR/output_metric_file
